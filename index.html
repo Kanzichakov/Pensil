@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#090408">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VIP Lounge">
+<link rel="manifest" href="manifest.json">
+<title>VIP Lounge</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+  /* Метка сборки: меняется при каждой загрузке страницы, обновляет только файлы
+     (style.css, game.js); IndexedDB, localStorage и куки не затрагиваются. */
+  window.__BUILD__ = Date.now();
+  window.__VERSION__ = '1.1';
+  document.write('<link rel="stylesheet" href="style.css?v=' + window.__BUILD__ + '">');
+</script>
+<noscript><link rel="stylesheet" href="style.css"></noscript>
+<style>
+  /* Индикатор версии сборки (VIP Lounge: матовое стекло + розовое золото) */
+  .build-badge {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: fit-content; max-width: 100%;
+    margin: 16px auto 2px;
+    padding: 6px 14px;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; line-height: 1.2;
+    color: var(--rose-gold, #e8a98f);
+    background: linear-gradient(135deg, rgba(232, 169, 143, .10), rgba(217, 70, 122, .08));
+    border: 1px solid rgba(232, 169, 143, .28);
+    border-radius: 999px;
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255, 214, 200, .10), 0 4px 14px rgba(0, 0, 0, .28);
+    opacity: .82;
+    user-select: none; -webkit-user-select: none;
+  }
+  .build-badge::before {
+    content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent, linear-gradient(135deg, #d9467a, #f2a65a));
+    box-shadow: 0 0 8px var(--glow, rgba(232, 120, 150, .45));
+  }
+  .build-badge b { font-weight: 800; color: var(--text, #f8ece8); opacity: .9; }
+  .build-badge span { opacity: .75; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body data-screen="main" data-tab="chat">
+
+<!-- SVG-спрайт иконок -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2 0 3.5 1.1 4.4 2.5.9-1.4 2.4-2.5 4.4-2.5 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a1.5 1.5 0 013 0v5m0-1a1.5 1.5 0 013 0v2m0-1a1.5 1.5 0 013 0v5a6 6 0 01-6 6h-1a6 6 0 01-5-3l-2-4a1.5 1.5 0 012.5-1.5L9 15"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L3 21l1.9-5.4A8 8 0 1121 12z"/></symbol>
+  </defs>
+</svg>
+
+<!-- Фоновый слой: боке -->
+<div class="bg-layer" aria-hidden="true">
+  <i class="bokeh b1"></i><i class="bokeh b2"></i><i class="bokeh b3"></i><i class="bokeh b4"></i><i class="bokeh b5"></i>
+</div>
+
+<!-- Тосты (мгновенная обратная связь) -->
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<div id="app" class="app">
+
+  <!-- ===== ЭКРАН 1: ГЛАВНЫЙ ===== -->
+  <section id="screen-main" class="screen active">
+    <header class="top-bar glass">
+      <div class="logo">
+        <svg class="ic"><use href="#i-heart"/></svg>
+        <span>VIP</span>
+      </div>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" role="tab" data-tab="chat">Общий чат</button>
+        <button class="tab" role="tab" data-tab="fav">Избранные</button>
+      </nav>
+      <button id="btn-add" class="icon-btn accent" aria-label="Добавить персонажа">
+        <svg class="ic"><use href="#i-plus"/></svg>
+      </button>
+      <button id="btn-settings" class="icon-btn subtle" aria-label="Настройки">
+        <svg class="ic"><use href="#i-gear"/></svg>
+      </button>
+    </header>
+
+    <!-- Лента аватарок -->
+    <div id="girls-strip" class="girls-strip" aria-label="Девушки онлайн">
+      <button id="strip-add" class="avatar add-avatar pulse-hint" aria-label="Добавить первую девушку">
+        <span class="avatar-img"><svg class="ic"><use href="#i-plus"/></svg></span>
+        <span class="avatar-name">Добавить</span>
+      </button>
+      <!-- Аватарки рендерит game.js через #tpl-avatar -->
+    </div>
+
+    <!-- Вкладка: Общий чат -->
+    <div id="panel-chat" class="panel active">
+      <div id="onboarding" class="onboarding">
+        <svg class="ic"><use href="#i-hand"/></svg>
+        <p>Нажмите «+», чтобы создать первую анкету. Двойной тап по сообщению — сердечко.</p>
+      </div>
+      <div id="feed" class="feed" aria-live="polite"></div>
+      <div id="live-line" class="live-line" hidden>
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span id="live-text">Имя печатает...</span>
+      </div>
+      <form id="chat-form" class="input-bar glass" autocomplete="off">
+        <button type="button" id="btn-alive" class="alive-btn">
+          <svg class="ic"><use href="#i-spark"/></svg><span>Оживить</span>
+        </button>
+        <input id="chat-input" type="text" placeholder="Напишите всем..." enterkeyhint="send">
+        <button type="submit" class="send-btn" aria-label="Отправить">
+          <svg class="ic"><use href="#i-send"/></svg>
+        </button>
+      </form>
+    </div>
+
+    <!-- Вкладка: Избранные -->
+    <div id="panel-fav" class="panel">
+      <div id="fav-grid" class="fav-grid"></div>
+      <p id="fav-empty" class="empty-note">Пока пусто. Откройте анкету и нажмите на сердце.</p>
+    </div>
+  </section>
+
+  <!-- ===== ЭКРАН 2: ДЕЙТИНГ-КАРТОЧКА ===== -->
+  <section id="screen-card" class="screen">
+    <div class="card-media" id="card-media">
+      <div id="story-bars" class="story-bars"></div>
+      <div class="card-top">
+        <button id="card-back" class="icon-btn glass" aria-label="Назад">
+          <svg class="ic"><use href="#i-back"/></svg>
+        </button>
+        <div id="card-strip" class="card-strip" aria-label="Переключение анкет"></div>
+        <button id="card-fav" class="icon-btn glass" aria-label="В избранное">
+          <svg class="ic"><use href="#i-heart"/></svg>
+        </button>
+      </div>
+
+      <img id="card-bg" class="card-bg" alt="" draggable="false">
+      <img id="card-photo" class="card-photo" alt="" draggable="false">
+      <video id="card-video" class="card-video" playsinline muted loop hidden></video>
+      <div id="card-glare" class="card-glare"></div>
+      <div class="vignette"></div>
+      <div id="hold-hint" class="hold-hint">
+        <svg class="ic"><use href="#i-hand"/></svg>
+        <span>Свайп — листать · двойной тап — зум · удержание — «живое фото»</span>
+      </div>
+
+      <div class="card-hud">
+        <div class="card-head">
+          <h2 class="card-title"><span id="card-name">Имя</span>, <span id="card-age">18</span></h2>
+          <p id="card-status" class="card-status"></p>
+        </div>
+        <button id="card-cta" class="cta-btn">
+          <svg class="ic"><use href="#i-chat"/></svg><span>Приватный чат</span>
+        </button>
+        <button id="sheet-handle" class="sheet-handle" aria-label="Открыть анкету">
+          <svg class="ic"><use href="#i-up"/></svg><span>Анкета</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Нижняя шторка анкеты -->
+    <div id="sheet-backdrop" class="sheet-backdrop"></div>
+    <aside id="sheet" class="sheet" aria-hidden="true">
+      <div class="sheet-grip" id="sheet-grip"></div>
+      <div class="sheet-body">
+        <div class="sheet-head">
+          <h3 id="sheet-name">Имя</h3>
+          <span id="sheet-status" class="status-pill">Онлайн</span>
+        </div>
+        <h4>Характер</h4>
+        <p id="sheet-desc" class="sheet-desc"></p>
+        <h4>Галерея</h4>
+        <div id="sheet-gallery" class="gallery"></div>
+        <div class="sheet-actions">
+          <button id="btn-edit" class="btn ghost">
+            <svg class="ic"><use href="#i-edit"/></svg><span>Редактировать</span>
+          </button>
+          <button id="btn-delete" class="btn ghost danger">
+            <svg class="ic"><use href="#i-trash"/></svg><span>Удалить</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ===== ЭКРАН 3: ПРИВАТНЫЙ ЧАТ ===== -->
+  <section id="screen-private" class="screen">
+    <div id="pc-bg" class="pc-bg" aria-hidden="true"></div>
+    <div class="bg-layer pc-bokeh" aria-hidden="true">
+      <i class="bokeh b1"></i><i class="bokeh b3"></i><i class="bokeh b5"></i>
+    </div>
+
+    <header class="top-bar glass">
+      <button id="pc-back" class="icon-btn" aria-label="Назад">
+        <svg class="ic"><use href="#i-back"/></svg>
+      </button>
+      <img id="pc-avatar" class="mini-avatar" alt="">
+      <div class="pc-who">
+        <strong id="pc-name">Имя</strong>
+        <small id="pc-status">онлайн</small>
+      </div>
+      <button id="pc-fav" class="icon-btn" aria-label="Избранное">
+        <svg class="ic"><use href="#i-heart"/></svg>
+      </button>
+      <button id="pc-clear" class="icon-btn subtle" aria-label="Очистить диалог">
+        <svg class="ic"><use href="#i-trash"/></svg>
+      </button>
+    </header>
+
+    <div id="pc-feed" class="feed" aria-live="polite"></div>
+    <div id="pc-typing" class="live-line" hidden>
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span>печатает...</span>
+    </div>
+    <form id="pc-form" class="input-bar glass" autocomplete="off">
+      <input id="pc-input" type="text" placeholder="Сообщение..." enterkeyhint="send">
+      <button type="submit" class="send-btn" aria-label="Отправить">
+        <svg class="ic"><use href="#i-send"/></svg>
+      </button>
+    </form>
+  </section>
+</div>
+
+<!-- ===== МОДАЛКА: АНКЕТА ===== -->
+<div id="modal-girl" class="modal" aria-hidden="true">
+  <div class="modal-box glass">
+    <div class="modal-head">
+      <h3 id="girl-modal-title">Новая анкета</h3>
+      <button class="icon-btn subtle" data-close aria-label="Закрыть">
+        <svg class="ic"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <form id="girl-form" class="modal-form" autocomplete="off">
+      <label>Имя
+        <input id="f-name" type="text" maxlength="30" required placeholder="Например, Алиса">
+      </label>
+      <label>Возраст
+        <input id="f-age" type="number" min="18" max="99" step="1" value="21" required>
+      </label>
+      <label>Статус
+        <input id="f-status" type="text" maxlength="60" placeholder="Скучаю по вечерним разговорам">
+      </label>
+      <label>Системный промпт / характер
+        <textarea id="f-prompt" rows="5" placeholder="Опишите манеру речи, привычки, отношение к собеседнику..."></textarea>
+      </label>
+      <label>Память о вас
+        <textarea id="f-memory" rows="4" placeholder="Имя, вкусы, детали ваших отношений..."></textarea>
+      </label>
+      <fieldset class="voice-block">
+        <legend>Голос девушки</legend>
+        <label>Голос
+          <select id="f-voice" class="vip-select">
+            <option value="auto">Авто (по характеру)</option>
+            <option value="svetlana">Светлана — мягкий, тёплый</option>
+            <option value="dariya">Дарья — звонкий, игривый</option>
+            <option value="elena">Елена — бархатный, спокойный</option>
+          </select>
+        </label>
+        <label class="range-row">
+          <span class="range-head"><span>Тон голоса</span><output id="f-pitch-out">1.00</output></span>
+          <input id="f-pitch" class="vip-range" type="range" min="0.85" max="1.25" step="0.05" value="1">
+        </label>
+        <label class="range-row">
+          <span class="range-head"><span>Скорость речи</span><output id="f-rate-out">1.00</output></span>
+          <input id="f-rate" class="vip-range" type="range" min="0.85" max="1.2" step="0.05" value="1">
+        </label>
+        <button type="button" id="btn-voice-test" class="btn-voice">
+          <span class="vt-ico">🔊</span><span class="vt-text">Прослушать голос</span>
+        </button>
+      </fieldset>
+      <div class="upload-block">
+        <label for="f-files" class="btn ghost upload-btn">
+          <svg class="ic"><use href="#i-upload"/></svg><span>Фото / видео</span>
+        </label>
+        <input id="f-files" type="file" accept="image/*,video/mp4,video/webm" multiple hidden>
+        <div id="f-previews" class="previews"></div>
+      </div>
+      <button type="submit" class="cta-btn small">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА: НАСТРОЙКИ API ===== -->
+<div id="modal-settings" class="modal" aria-hidden="true">
+  <div class="modal-box glass">
+    <div class="modal-head">
+      <h3>Настройки API</h3>
+      <button class="icon-btn subtle" data-close aria-label="Закрыть">
+        <svg class="ic"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <form id="settings-form" class="modal-form" autocomplete="off">
+      <label>URL эндпоинта
+        <input id="s-url" type="url" value="https://openrouter.ai" placeholder="https://openrouter.ai">
+      </label>
+      <label>API-ключ
+        <input id="s-key" type="password" placeholder="sk-or-..." autocomplete="off">
+      </label>
+      <label>Модель
+        <input id="s-model" type="text" placeholder="например, anthropic/claude-sonnet-4.5">
+      </label>
+      <fieldset class="segment">
+        <legend>Размер ответов</legend>
+        <label><input type="radio" name="reply-size" value="short" checked><span>Короткие как в чате</span></label>
+        <label><input type="radio" name="reply-size" value="long"><span>Подробные ролевые</span></label>
+      </fieldset>
+      <fieldset class="segment">
+        <legend>Озвучка сообщений</legend>
+        <label><input type="radio" name="tts-mode" value="neural" checked><span>Нейросеть (реалистичный женский)</span></label>
+        <label><input type="radio" name="tts-mode" value="browser"><span>Встроенный в браузер (оффлайн)</span></label>
+      </fieldset>
+      <label>TTS-эндпоинт (OpenAI-совместимый, необязательно)
+        <input id="s-tts-url" type="url" placeholder="https://ваш-edge-tts-прокси">
+      </label>
+      <p class="hint-note">Если сервер недоступен или нет интернета, голос автоматически переключится на встроенный.</p>
+      <label>Ваш профиль (Персона)
+        <textarea id="s-persona" placeholder="Ваше имя, возраст, внешность и стиль..."></textarea>
+      </label>
+      <div style="display:flex; gap:10px; margin-top:4px;">
+      <button type="button" id="btn-export-db" class="btn">💾 Экспорт базы</button>
+      <label class="btn" style="cursor:pointer;">
+      📂 Импорт базы
+      <input type="file" id="btn-import-db" accept=".json" hidden>
+      </label>
+      </div>  
+      <button type="submit" class="cta-btn small">Сохранить</button>
+    </form>
+    <div id="build-badge" class="build-badge" title="Версия сборки">
+      <b>v1.1</b><span>·</span><span>загрузка…</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ДИАЛОГ ПОДТВЕРЖДЕНИЯ ===== -->
+<div id="modal-confirm" class="modal modal-sm" aria-hidden="true">
+  <div class="modal-box glass">
+    <h3 id="confirm-title">Подтвердите действие</h3>
+    <p id="confirm-text" class="confirm-text">Это действие нельзя отменить.</p>
+    <div class="confirm-actions">
+      <button type="button" id="confirm-no" class="btn ghost">Отмена</button>
+      <button type="button" id="confirm-yes" class="btn danger-fill">Подтвердить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Слой для летящих сердечек (реакции) -->
+<div id="hearts-layer" class="hearts-layer" aria-hidden="true"></div>
+
+<noscript><p class="noscript">Для работы приложения включите JavaScript.</p></noscript>
+
+<!-- Шаблоны для game.js -->
+<template id="tpl-avatar">
+  <button class="avatar" data-id="">
+    <span class="avatar-img"><img alt=""><i class="online-dot"></i></span>
+    <span class="avatar-name"></span>
+  </button>
+</template>
+
+<template id="tpl-msg">
+  <div class="msg">
+    <img class="msg-ava" alt="">
+    <div class="msg-bubble">
+      <div class="msg-meta">
+        <b class="msg-name"></b>
+        <button type="button" class="msg-speak" title="Озвучить">🔊</button>
+      </div>
+      <p class="msg-text"></p>
+      <span class="msg-heart"><svg class="ic"><use href="#i-heart"/></svg></span>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-thumb">
+  <div class="thumb" data-index="">
+    <img alt="">
+    <button type="button" class="thumb-del" aria-label="Удалить">
+      <svg class="ic"><use href="#i-close"/></svg>
+    </button>
+  </div>
+</template>
+
+<template id="tpl-fav-card">
+  <article class="fav-card" data-id="">
+    <img alt="">
+    <div class="fav-info"><strong></strong><small></small></div>
+  </article>
+</template>
+
+<script>
+  /* Подписываем бейдж: версия, № сборки (по времени загрузки) и дата/время загрузки */
+  (function () {
+    var d = new Date(window.__BUILD__), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var stamp = p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + String(d.getFullYear()).slice(2) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    var el = document.getElementById('build-badge');
+    if (el) el.innerHTML = '<b>v' + window.__VERSION__ + '</b><span>·</span><span>' + stamp + '</span><span>·</span><span>#' + window.__BUILD__.toString(36).slice(-4).toUpperCase() + '</span>';
+  })();
+  document.write('<script src="game.js?v=' + window.__BUILD__ + '"><\/script>');
+</script>
+<noscript><script src="game.js"></script></noscript>
+</body>
+</html>
