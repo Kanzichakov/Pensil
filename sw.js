@@ -7,7 +7,7 @@
 //
 // Версия кэша ниже перезаписывается GitHub Action (.github/workflows/auto-sw.yml) при каждом push в main.
 // Строку менять вручную не нужно, а её формат (одна строка, одинарные кавычки) — не трогать.
-const CACHE_VERSION = 'v1-init';
+const CACHE_VERSION = 'v-7a0c6fb';
 
 const CACHE_PREFIX = "vip-lounge-static-";
 const CACHE = CACHE_PREFIX + CACHE_VERSION;
