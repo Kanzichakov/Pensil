@@ -1,15 +1,23 @@
-// VIP Lounge Service Worker
-// Статика: «сеть в приоритете» с коротким таймаутом и откатом в кэш (обновления приходят сразу, офлайн запускается мгновенно).
-// Любые внешние запросы (Groq, OpenRouter, TTS-воркер) и не-GET запросы SW не трогает.
-// При выкладке новой версии достаточно поменять номер в CACHE_VERSION (необязательно: статика и так обновляется при каждой загрузке с сетью).
+// VIP Lounge Service Worker (гибридный кэш)
+// Оболочка (index, style, game, manifest, иконки) — предзагрузка при install + «сеть в приоритете» с откатом в кэш.
+// Медиа и статика своего домена (картинки, иконки, аудио, шрифты) — кэшируются на лету при первом запросе
+// и дальше отдаются из кэша (cache-first), в т.ч. офлайн.
+// Остальные запросы своего домена — «сеть в приоритете» с сохранением в кэш.
+// Внешние API (Groq, OpenRouter, TTS-воркер) и не-GET запросы SW не трогает.
+//
+// Версия кэша ниже перезаписывается GitHub Action (.github/workflows/auto-sw.yml) при каждом push в main.
+// Строку менять вручную не нужно, а её формат (одна строка, одинарные кавычки) — не трогать.
+const CACHE_VERSION = 'v1-init';
 
-const CACHE_VERSION = "v1";
 const CACHE_PREFIX = "vip-lounge-static-";
 const CACHE = CACHE_PREFIX + CACHE_VERSION;
 const NET_TIMEOUT = 3500;   // сколько ждём сеть, прежде чем отдать копию из кэша (медленный/«зависший» интернет), мс
 
 const CORE = ["./", "./index.html", "./style.css", "./game.js", "./manifest.json"];
 const ICONS = ["./icon-180.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
+
+// Файлы, которые кэшируются на лету по схеме cache-first
+const ASSET_RE = /\.(png|jpe?g|gif|webp|avif|bmp|svg|ico|mp3|ogg|oga|wav|m4a|aac|flac|opus|woff2?|ttf|otf|eot)$/i;
 
 const SCOPE_PATH = new URL("./", self.location).pathname;
 const INDEX_URL = new URL("./index.html", self.location).href;
@@ -41,7 +49,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
-  if (req.headers.has("range")) return;   // медиа-запросы по диапазону не трогаем
+  if (req.headers.has("range")) return;   // медиа-запросы по диапазону (206) не кэшируем и не трогаем
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;          // внешние API/TTS идут мимо SW
@@ -57,9 +65,33 @@ self.addEventListener("fetch", (event) => {
     k.hash = "";
     key = k.href;
   }
-  event.respondWith(networkFirst(event, req, key, isNav));
+
+  if (!isNav && ASSET_RE.test(url.pathname)) {
+    event.respondWith(cacheFirst(event, req, key));
+  } else {
+    event.respondWith(networkFirst(event, req, key, isNav));
+  }
 });
 
+// Медиа и статика: из кэша, если есть; иначе из сети с сохранением в кэш
+async function cacheFirst(event, req, key) {
+  const cache = await caches.open(CACHE);
+  const hit = await cache.match(key, { ignoreSearch: true });
+  if (hit) return hit;
+  try {
+    const res = await fetch(req);
+    // кладём только полные успешные ответы своего домена (не 206, не редиректы, не ошибки)
+    if (res && res.status === 200 && res.type === "basic" && !res.redirected) {
+      const copy = res.clone();
+      event.waitUntil(cache.put(key, copy).catch(() => {}));
+    }
+    return res;
+  } catch (_) {
+    return new Response("Offline", { status: 504, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
+}
+
+// Оболочка и прочие файлы: сеть в приоритете, при сбое/таймауте — копия из кэша
 function networkFirst(event, req, key, isNav) {
   const net = fetch(req).then((res) => {
     // редиректы в кэш не кладём: Safari не отдаёт их как ответ на навигацию
@@ -75,7 +107,7 @@ function networkFirst(event, req, key, isNav) {
 
   return Promise.race([net.catch(() => null), timeout]).then(async (res) => {
     if (res && (res.ok || res.status < 500)) return res;
-    const cached = await fromCache(req, key, isNav);
+    const cached = await fromCache(key, isNav);
     if (cached) return cached;
     if (res) return res;
     // кэша нет — дожидаемся сети до конца (если она есть, но медленная)
@@ -83,7 +115,7 @@ function networkFirst(event, req, key, isNav) {
   });
 }
 
-async function fromCache(req, key, isNav) {
+async function fromCache(key, isNav) {
   const cache = await caches.open(CACHE);
   let hit = await cache.match(key, { ignoreSearch: true });
   if (!hit && isNav) hit = (await cache.match(ROOT_URL)) || null;
