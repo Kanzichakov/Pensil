@@ -1,1 +1,54 @@
+# Кладётся в репозиторий как .github/workflows/auto-sw.yml
+# При каждом push в main подставляет короткий хеш коммита в CACHE_VERSION внутри sw.js,
+# чтобы браузеры пользователей сами подтягивали свежий кэш без ручной правки версии.
+name: Auto-bump Service Worker cache
 
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "vip-tts/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-sw-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bump:
+    # не реагируем на коммиты самого бота и на коммиты с [skip ci]
+    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Write short commit hash into sw.js
+        id: bump
+        run: |
+          SHORT="${GITHUB_SHA::7}"
+          if [ ! -f sw.js ]; then
+            echo "sw.js не найден в корне репозитория" >&2
+            exit 1
+          fi
+          sed -i -E "s/^const CACHE_VERSION = '[^']*';/const CACHE_VERSION = 'v-${SHORT}';/" sw.js
+          grep -n "^const CACHE_VERSION" sw.js
+          grep -q "^const CACHE_VERSION = 'v-${SHORT}';" sw.js || { echo "Маркер CACHE_VERSION не найден" >&2; exit 1; }
+          echo "short=${SHORT}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- sw.js; then
+            echo "Версия не изменилась — коммит не нужен"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sw.js
+          git commit -m "chore: bump SW cache version to v-${{ steps.bump.outputs.short }} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
